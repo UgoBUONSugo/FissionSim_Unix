@@ -14,7 +14,7 @@
 #include "external.h"
 
 //#define ATOM_NAME "atomo.out"
-#define N_ATOMI_INIT 5
+#define N_ATOMI_INIT 2
 //#define TEST_ERROR;
 #define N_ATOM_MAX 70
 
@@ -67,7 +67,7 @@ int main(){
 
 
 
-
+	sleep(3);
 	//------------EXIT-----------------//
 	semctl(semid, 0, IPC_RMID);
 	msgctl(msgid, IPC_RMID, NULL);
