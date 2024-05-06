@@ -20,7 +20,7 @@ struct msgbuf{
 	long mtype;
 } buf;
 
-int split_atom(int atomic_number);
+int split_atom(int atomic_number, struct SimStats *shared_memory, int semid);
 
 int main(int argc, char* argv[]){
 	(void)argc;
@@ -28,44 +28,57 @@ int main(int argc, char* argv[]){
 	int atomic_number = atoi(argv[1]);
 	int init = atoi(argv[2]);
 
-	key_t key = ftok("/master.c", 'x'); //Coda di messaggi
+	key_t key = ftok("/master.c", 'x');
+
+	struct SimStats *shared_memory;
+	int m_id = shmget(key, sizeof(*shared_memory), 0600); 
+	shared_memory = (struct SimStats*) shmat(m_id, NULL, 0); 
+
 	int semid = semget(key, 1, 0600);
 	int queid = msgget(key, 0600);
 
-	if(init == 0){
-		P(semid, 0);     							  //Sync
-		wait_for_zero(semid, 0);					  //Inizio SIM
+	if(init == 0) 			//Se init=1 allora il processo è stato creato durante l'esec del programma e non ha bisogno di sincronizzarsi
+	{     
+		P(semid, 0); 
+		wait_for_zero(semid, 0);		
 	}
 
-	while(true){
+	while(true)
+	{
 		msgrcv(queid, &buf, sizeof(buf), 1, 0);
-		atomic_number = split_atom(atomic_number);
+		atomic_number = split_atom(atomic_number, shared_memory, semid);
 	}
 
 	exit(0);
 }
 
-int split_atom(int atomic_number){
+int split_atom(int atomic_number, struct SimStats *shared_memory, int semid){
 
-	if(atomic_number == 1){
-		return -1; //Scoria
+	if(atomic_number <= 1)
+	{
+		P(semid, 1);
+		shared_memory->waste_count++;
+		V(semid, 1);
+
+		exit(0);
 	}
 
 	int file_pipes[2];
 	pid_t kid_pid;
 	int kid_atomic_number;
 
-	if (pipe(file_pipes) == 0) { 
+	if (pipe(file_pipes) == 0) 
+	{ 
 		switch (kid_pid = fork()) {
 			case -1:
-				printf("GHWA8IGHWA8UGHWAIGW");
+				dprintf(STDERR_FILENO,"%s:%d: PID=%5d: Error %d (%s)\n", __FILE__, __LINE__, getpid(),	errno, strerror(errno));
+				exit(0);
 				break;
 
 			case 0:
 				close(file_pipes[1]);
 
 				read(file_pipes[0], &atomic_number, sizeof(int));
-				printf("Processo Figlio AN %d: %d\n", getpid(), atomic_number);printf("----------------------------\n");
 				close(file_pipes[0]);  
 
 				char atomic_number_str[10];
@@ -82,9 +95,13 @@ int split_atom(int atomic_number){
 				atomic_number -= kid_atomic_number; 
 
 				write(file_pipes[1], &kid_atomic_number, sizeof(int));
-				int liberated_energy = atomic_number * kid_atomic_number - MAX(atomic_number, kid_atomic_number);printf("----------------------------\n");
-				printf("Processo Padre AN %d: %d\n", getpid(), atomic_number);
-				printf("Energia liberata: %d\n", liberated_energy);
+				int liberated_energy = atomic_number * kid_atomic_number - MAX(atomic_number, kid_atomic_number);
+
+				P(semid, 1);
+				shared_memory->tot_energy += liberated_energy;
+				shared_memory->split_count++;
+				V(semid, 1);
+
 				break;
 		}
 		close(file_pipes[1]); 

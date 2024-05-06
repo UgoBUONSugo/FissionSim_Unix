@@ -1,12 +1,12 @@
-struct sembuf {
+struct Sembuf {
 	short sem_num;
 	short sem_op;
 	short sem_flg;
 };
-int semop(int, struct sembuf*, int);
+int semop(int, struct Sembuf*, int);
 
 int P(int sem_id, int n) {
-	struct sembuf op;
+	struct Sembuf op;
 	op.sem_num = n;
 	op.sem_op = -1;
 	op.sem_flg = 0;
@@ -14,7 +14,7 @@ int P(int sem_id, int n) {
 }
 
 int V(int sem_id, int n) {
-	struct sembuf op;
+	struct Sembuf op;
 	op.sem_num = n;
 	op.sem_op = 1;
 	op.sem_flg = 0;
@@ -22,7 +22,7 @@ int V(int sem_id, int n) {
 }
 
 int wait_for_zero(int sem_id, int n) {
-	struct sembuf op;
+	struct Sembuf op;
 	op.sem_num = n;
 	op.sem_op = 0;
 	op.sem_flg = 0;

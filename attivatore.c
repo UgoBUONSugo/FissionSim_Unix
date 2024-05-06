@@ -13,7 +13,8 @@
 #include <sys/msg.h>
 #include "external.h"
 
-#define TOT_SEC 1
+#define TOT_SEC 0
+#define TOT_NSEC 500000000
 
 struct msgbuf{
 	long mtype;
@@ -29,18 +30,23 @@ int main(){
 	buf.mtype = 1;
 
 	struct timespec timer;
-	timer.tv_sec = 1;
-	timer.tv_nsec = 0;
+	timer.tv_sec = TOT_SEC;
+	timer.tv_nsec = TOT_NSEC;
+
+	struct SimStats *shared_memory;
+	int m_id = shmget(key, sizeof(*shared_memory), 0600); 
+	shared_memory = (struct SimStats*) shmat(m_id, NULL, 0);
 
 	P(semid, 0);
 	wait_for_zero(semid, 0);
-	/*
+	
 	while(true){
 		msgsnd(msgid, &buf, sizeof(buf), 0);
-		nanosleep(&timer, NULL);
-	}*/
-	for(int i = 0; i < 10; i++){
-		msgsnd(msgid, &buf, sizeof(buf), 0);
+
+		P(semid, 1);
+ 		shared_memory->activation_count++;
+		V(semid, 1);
+
 		nanosleep(&timer, NULL);
 	}
 }
