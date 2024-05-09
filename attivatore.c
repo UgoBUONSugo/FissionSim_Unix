@@ -22,7 +22,7 @@ struct msgbuf{
 
 int main(int argc, char* argv[]){
 	(void)argc;
-	int STEP_ALIMENTAZIONE = atoi(argv[0]);
+	int STEP_ATTIVATORE = atoi(argv[0]);
 
 	key_t key = ftok("/master.c", 'x');
 	int semid = semget(key, 1, 0600);
@@ -32,7 +32,7 @@ int main(int argc, char* argv[]){
 	buf.mtype = 1;
 
 	struct timespec timer;
-	timer.tv_sec = STEP_ALIMENTAZIONE;
+	timer.tv_sec = STEP_ATTIVATORE;
 	timer.tv_nsec = TOT_NSEC;
 
 	struct SimStats *shared_memory;

@@ -22,14 +22,14 @@ int N_ATOM_MAX;
 
 int main(int argc, char* argv[]){
 	(void)argc;
-	int STEP_ATTIVATORE = atoi(argv[0]);
+	int STEP_ALIMENTAZIONE = atoi(argv[0]);
 	N_ATOM_MAX = atoi(argv[1]);
 
 	key_t key = ftok("/master.c", 'x');
 	int semid = semget(key, 1, 0600);
 
 	struct timespec timer;
-	timer.tv_sec = STEP_ATTIVATORE;
+	timer.tv_sec = STEP_ALIMENTAZIONE;
 	timer.tv_nsec = TOT_NSEC;
 
 	P(semid, 0);
