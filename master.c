@@ -29,10 +29,10 @@ struct msgbuf{
 int ENERGY_DEM;
 int N_ATOMI_INIT;
 int N_ATOM_MAX;
-int STEP_ATTIVATORE;
-int STEP_ALIMENTAZIONE;
 int SIM_DURATION;
 int ENERGY_EXPLODE_THRESHOLD;
+char *STEP_ATTIVATORE;
+char *STEP_ALIMENTAZIONE;
 
 int semid;
 pid_t kid_pid;
@@ -42,13 +42,12 @@ struct sembuf sops[1];
 int main(){
 	get_var();
 
-	long rem_energy = 0;
+	long rem_energy = 1000;
 	struct SimStats recents;
 	memset(&recents, 0, sizeof(recents));
 
 	signal(SIGQUIT, timeout);  
-	signal(SIGUSR2, timeout);  
-	//signal(17, switch_inhibitor);  
+	signal(SIGUSR2, timeout); 
 
 	printf("Processo numero: %d\nPremere CTRL+\\ per terminale il programma\n", getpid());
 
@@ -153,7 +152,8 @@ void init_activator(){
 			break;
 
 		case 0:
-			execve("attivatore", (char *const[]){NULL}, NULL);
+			char *argv[] = {STEP_ATTIVATORE, NULL};
+			execve("attivatore", argv, NULL);
 			break;
 
 		default:  
@@ -168,7 +168,10 @@ void init_supply(){
 			break;
 
 		case 0:
-			execve("alimentazione", (char *const[]){NULL}, NULL);
+			char *atom_max[20];
+			sprintf(*atom_max, "%d", N_ATOM_MAX);
+			char *argv[] = {STEP_ALIMENTAZIONE, *atom_max, NULL};
+			execve("alimentazione", argv, NULL);
 			break;
 
 		default:  
@@ -187,7 +190,6 @@ void timeout(int signum){
 	msgctl(msgget(key, 0600), IPC_RMID, NULL);
 	shmctl(shmget(key, sizeof(struct SimStats), IPC_CREAT | 0600), IPC_RMID, NULL);
 
-	printf("\nMemoria disallocata con successo!\n");
 	printf("Simulazione terminata per: ");
 
 	switch(signum)
@@ -227,10 +229,10 @@ void get_var(){
 	N_ATOM_MAX = atoi(getenv("N_ATOM_MAX"));
 
 	setenv("STEP_ATTIVATORE", "1", 0);
-	STEP_ATTIVATORE = atoi(getenv("STEP_ATTIVATORE"));
+	STEP_ATTIVATORE = getenv("STEP_ATTIVATORE");
 
 	setenv("STEP_ALIMENTAZIONE", "3", 0);
-	STEP_ALIMENTAZIONE = atoi(getenv("STEP_ALIMENTAZIONE"));
+	STEP_ALIMENTAZIONE = getenv("STEP_ALIMENTAZIONE");
 
 	setenv("SIM_DURATION", "30", 0);
 	SIM_DURATION = atoi(getenv("SIM_DURATION"));

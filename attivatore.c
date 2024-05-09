@@ -13,14 +13,16 @@
 #include <sys/msg.h>
 #include "external.h"
 
-#define TOT_SEC 0
-#define TOT_NSEC 500000000
+#define TOT_NSEC 0
+#define N_ACTIVATIONS 3
 
 struct msgbuf{
 	long mtype;
 };
 
-int main(){
+int main(int argc, char* argv[]){
+	(void)argc;
+	int STEP_ALIMENTAZIONE = atoi(argv[0]);
 
 	key_t key = ftok("/master.c", 'x');
 	int semid = semget(key, 1, 0600);
@@ -30,7 +32,7 @@ int main(){
 	buf.mtype = 1;
 
 	struct timespec timer;
-	timer.tv_sec = TOT_SEC;
+	timer.tv_sec = STEP_ALIMENTAZIONE;
 	timer.tv_nsec = TOT_NSEC;
 
 	struct SimStats *shared_memory;
@@ -40,11 +42,14 @@ int main(){
 	P(semid, 0);
 	wait_for_zero(semid, 0);
 	
-	while(true){
-		msgsnd(msgid, &buf, sizeof(buf), 0);
+	while(true)
+	{
+		for(int i = 0; i < N_ACTIVATIONS; i++){
+			msgsnd(msgid, &buf, sizeof(buf), 0);
+		}
 
 		P(semid, 1);
- 		shared_memory->activation_count++;
+ 		shared_memory->activation_count += N_ACTIVATIONS;
 		V(semid, 1);
 
 		nanosleep(&timer, NULL);

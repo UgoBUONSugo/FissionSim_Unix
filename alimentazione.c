@@ -13,21 +13,23 @@
 #include <sys/msg.h>
 #include "external.h"
 
-#define REFUEL_Q 1
-#define TOT_SEC 2
+#define REFUEL_Q 2
 #define TOT_NSEC 0
-
-#define N_ATOM_MAX 20
 
 void init_atom(int n);
 
+int N_ATOM_MAX;
 
-int main(){
+int main(int argc, char* argv[]){
+	(void)argc;
+	int STEP_ATTIVATORE = atoi(argv[0]);
+	N_ATOM_MAX = atoi(argv[1]);
+
 	key_t key = ftok("/master.c", 'x');
 	int semid = semget(key, 1, 0600);
 
 	struct timespec timer;
-	timer.tv_sec = TOT_SEC;
+	timer.tv_sec = STEP_ATTIVATORE;
 	timer.tv_nsec = TOT_NSEC;
 
 	P(semid, 0);
