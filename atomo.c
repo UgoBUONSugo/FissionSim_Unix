@@ -13,7 +13,6 @@
 #include <sys/msg.h>
 #include "external.h"
 
-#define N_ATOM_MAX 118
 #define MAX(x, y) (((x) > (y)) ? (x) : (y))
 
 struct msgbuf{
