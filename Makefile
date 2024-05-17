@@ -2,8 +2,9 @@
 
 CC = gcc
 CFLAGS = -Wall -Wvla -Wextra -Werror -std=gnu99
+TARGET = master
 
-all: master atomo attivatore alimentazione
+all: master atomo attivatore alimentazione inibitore
 
 master: master.c external.c
 	$(CC) $(CFLAGS) -o master master.c external.c
@@ -17,6 +18,11 @@ attivatore: attivatore.c external.c
 alimentazione: alimentazione.c external.c
 	$(CC) $(CFLAGS) -o alimentazione alimentazione.c external.c
 
+inibitore: inibitore.c external.c
+	$(CC) $(CFLAGS) -o inibitore inibitore.c external.c
+
 clean:
 	rm -f master atomo attivatore alimentazione
 
+run: $(TARGET)
+	./$(TARGET)

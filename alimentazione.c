@@ -11,6 +11,7 @@
 #include <sys/shm.h>
 #include <sys/ipc.h>
 #include <sys/msg.h>
+#include <signal.h>
 #include "external.h"
 
 #define REFUEL_Q 2
@@ -25,7 +26,7 @@ int main(int argc, char* argv[]){
 	int STEP_ALIMENTAZIONE = atoi(argv[0]);
 	N_ATOM_MAX = atoi(argv[1]);
 
-	key_t key = ftok("/master.c", 'x');
+	key_t key = ftok("master.c", 'x');
 	int semid = semget(key, 1, 0600);
 
 	struct timespec timer;

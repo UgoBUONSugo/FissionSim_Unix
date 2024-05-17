@@ -4,6 +4,7 @@ struct Sembuf {
 	short sem_flg;
 };
 int semop(int, struct Sembuf*, int);
+void exit(int status);
 
 int P(int sem_id, int n) {
 	struct Sembuf op;
@@ -27,4 +28,8 @@ int wait_for_zero(int sem_id, int n) {
 	op.sem_op = 0;
 	op.sem_flg = 0;
 	return semop(sem_id, &op, 1);
+}
+
+void sim_end(){
+	exit(1);
 }

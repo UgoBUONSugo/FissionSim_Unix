@@ -11,6 +11,7 @@
 #include <sys/shm.h>
 #include <sys/ipc.h>
 #include <sys/msg.h>
+#include <signal.h>
 #include "external.h"
 
 #define MAX(x, y) (((x) > (y)) ? (x) : (y))
@@ -27,7 +28,7 @@ int main(int argc, char* argv[]){
 	int atomic_number = atoi(argv[1]);
 	int init = atoi(argv[2]);
 
-	key_t key = ftok("/master.c", 'x');
+	key_t key = ftok("master.c", 'x');
 
 	struct SimStats *shared_memory;
 	int m_id = shmget(key, sizeof(*shared_memory), 0600); 
@@ -97,7 +98,7 @@ int split_atom(int atomic_number, struct SimStats *shared_memory, int semid){
 				int liberated_energy = atomic_number * kid_atomic_number - MAX(atomic_number, kid_atomic_number);
 
 				P(semid, 1);
-				shared_memory->tot_energy += liberated_energy;
+				shared_memory->liberated_energy += liberated_energy;
 				shared_memory->split_count++;
 				V(semid, 1);
 
