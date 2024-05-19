@@ -26,7 +26,7 @@
 void init_atom(int atoms_n);
 void sigio_handl(int signum);
 void init_supply();
-pid_t init_activator();
+pid_t init_activator(char answ);
 pid_t init_inhibitor();
 void inhib_switch();
 void get_var();
@@ -46,7 +46,7 @@ char *STEP_ATTIVATORE;
 char *STEP_ALIMENTAZIONE;
 
 int semid;
-int inhib_status = 0;
+int inhib_status;
 pid_t kid_pid;
 key_t key;
 struct sembuf sops[1];
@@ -61,6 +61,10 @@ void toggle_signals(int block) {
 }
 
 int main(){
+	float ratio;
+	char answ;
+	struct timespec rem;
+
 	atexit(&sim_term);
 	get_var();
 
@@ -70,11 +74,7 @@ int main(){
 	//sa.sa_flags = SA_RESTART; //?????????????????????
 	sigaction(SIGIO, &sa, NULL);
 
-	fcntl(0, F_SETOWN, getpid());
-	fcntl(0, F_SETFL, O_NONBLOCK | O_ASYNC);
-
-
-	long rem_energy = 1000;
+	long rem_energy = 10000;
 	struct SimStats overall_stats;
 	memset(&overall_stats, 0, sizeof(overall_stats));
   
@@ -82,9 +82,9 @@ int main(){
 
 	key = ftok("master.c", 'x');
 	semid = semget(key, 3, IPC_CREAT | 0600);
-	semctl(semid, 0, SETVAL, N_ATOMI_INIT + 4);
-	semctl(semid, 1, SETVAL, 1);
-	semctl(semid, 2, SETVAL, 1);
+	semctl(semid, 0, SETVAL, N_ATOMI_INIT + 4); //Sem per sync inizio
+	semctl(semid, 1, SETVAL, 1);								//Sem mutex per accedere alla SM
+	semctl(semid, 2, SETVAL, 1);								//Sem per comunicazione master-inibitore
 
   int msgid = msgget(key, IPC_CREAT | 0600); (void)msgid;
 
@@ -95,8 +95,17 @@ int main(){
 
 	inhibitor_pid = init_inhibitor();
 	init_atom(N_ATOMI_INIT);
-	activator_pid = init_activator();
 	init_supply();
+
+
+	printf("Attivare il processo inibitore?(y/n) ");
+	scanf(" %c", &answ);
+	while(answ != 'y' && answ != 'n'){
+		printf("Rispondere 'y' oppure 'n': ");
+		scanf(" %c", &answ);
+	}
+	activator_pid = init_activator(answ);
+	inhib_status = answ == 'y' ? 1 : 0;
 
 	signal(SIGALRM, sim_print);
 
@@ -104,19 +113,22 @@ int main(){
 	timer.tv_sec = TOT_SEC;
 	timer.tv_nsec = TOT_NSEC;
 
+	fcntl(0, F_SETOWN, getpid());
+	fcntl(0, F_SETFL, O_NONBLOCK | O_ASYNC);
+
 	P(semid, 0);
 	wait_for_zero(semid, 0);
-	alarm(SIM_DURATION);
-	struct timespec rem;
+
+	alarm(SIM_DURATION); (void)rem;
+
 	while(true)
 	{ 
-		//sleep(1);
 
 		toggle_signals(1);
 		if(inhib_status == 1){
+			semctl(semid, 2, SETVAL, 1);
 			kill(inhibitor_pid, SIGUSR2);
 			wait_for_zero(semid, 2);
-			semctl(semid, 2, SETVAL, 1);
 		}
 		else{
 			P(semid, 1);
@@ -142,30 +154,66 @@ int main(){
 		printf("|Energia consumata     %10li  %10li    |\n", overall_stats.consumed_energy, shared_memory->consumed_energy);
 		printf("|Energia assorbita     %10li  %10li    |\n", overall_stats.absorbed_energy, shared_memory->absorbed_energy);
 		printf("|Energia disponibile:  %10li                |\n", rem_energy);
-		printf(" ------------------------------------------------ \n");
-		printf("STATUS INIBITORE: ");
-		inhib_status == 0 ? printf("\x1B[31mOFF \033[0m\n\n") : printf("\x1B[32mON \033[0m\n\n");
+
+		ratio = (float)(rem_energy) / (float)(ENERGY_EXPLODE_THRESHOLD);
 
 		if((rem_energy -= ENERGY_DEM) < 0)
 		{
+			printf("|[\033[0;34m//\033[0;37m");
+			for(int i = 0; i < (ratio * 20) && i < 5; i++){
+				printf("\033[0;36m/");
+			}
+			for(int i = 5; i < (ratio * 20) && i < 15; i++){
+				printf("\033[0;32m/");
+			}
+			for(int i = 15; i <= (ratio * 20) && i <= 20; i++){
+				printf("\033[0;33m/");
+			}
+			for(int i = 0; i < (20 - (ratio * 20)); i++){
+				printf("\033[0;37m-");
+			}
+			printf("\033[0;31m//\033[0m]                     |\n");
+			printf(" ------------------------------------------------ \n");
+			printf("STATUS INIBITORE: ");
+			inhib_status == 0 ? printf("\x1B[31mOFF \033[0m\n\n") : printf("\x1B[32mON \033[0m\n\n");
 			sim_print(BLACKOUT);
 		}
-		bzero(shared_memory, sizeof(struct SimStats));
+
+		bzero(shared_memory, sizeof(struct SimStats)); //Reset a zero della sm
 		shared_memory->consumed_energy = ENERGY_DEM;
 
 		V(semid, 1);
+
+		printf("|[\033[0;34m//\033[0;37m");
+		for(int i = 0; i < (ratio * 20) && i < 5; i++){
+			printf("\033[0;36m/");
+		}
+		for(int i = 5; i < (ratio * 20) && i < 15; i++){
+			printf("\033[0;32m/");
+		}
+		for(int i = 15; i <= (ratio * 20) && i <= 20; i++){
+			printf("\033[0;33m/");
+		}
+		for(int i = 0; i < (20 - (ratio * 20)); i++){
+			printf("\033[0;37m-");
+		}
+		printf("\033[0;31m//\033[0m]                     |\n");
+		printf(" ------------------------------------------------ \n");
+		printf("STATUS INIBITORE: ");
+		inhib_status == 0 ? printf("\x1B[31mOFF \033[0m\n\n") : printf("\x1B[32mON \033[0m\n\n");
 
 		if(rem_energy > ENERGY_EXPLODE_THRESHOLD)
 		{
 			sim_print(EXPLODE);
 		}
 
-		toggle_signals(0);
-		while(nanosleep(&timer, &rem) && errno==EINTR){
+		toggle_signals(0); 
+		nanosleep(&timer, NULL);
+
+		/*while(nanosleep(&timer, &rem) && errno==EINTR){
         timer = rem;
     }
-    timer.tv_sec = TOT_SEC;
-		//sleep(1);
+    timer.tv_sec = 1;*/
 	}
 	
 }
@@ -210,7 +258,7 @@ void init_atom(int n){
 
 }
 
-pid_t init_activator(){
+pid_t init_activator(char answ){
 	switch (kid_pid = fork()) {
 		case -1:
 			//TEST_ERRORS
@@ -219,7 +267,7 @@ pid_t init_activator(){
 		case 0:
 			char inhib_pid[20]; 
 			sprintf(inhib_pid, "%d", inhibitor_pid);
-			char *argv[] = {STEP_ATTIVATORE, inhib_pid, NULL};
+			char *argv[] = {STEP_ATTIVATORE, inhib_pid, &answ, NULL};
 			execve("attivatore", argv, NULL);
 			break;
 

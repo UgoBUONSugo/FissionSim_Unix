@@ -3,10 +3,10 @@
 #include <string.h>
 #include <stdbool.h>
 #include <stddef.h>
-#include <sys/types.h>
 #include <unistd.h>
 #include <errno.h>
 #include <time.h>
+#include <sys/types.h>
 #include <sys/sem.h>
 #include <sys/shm.h>
 #include <sys/ipc.h>
@@ -22,25 +22,28 @@ void init_atom(int n);
 int N_ATOM_MAX;
 
 int main(int argc, char* argv[]){
+	key_t key;
+	int STEP_ALIMENTAZIONE;
+	int semid;
+	struct timespec timer;
 	(void)argc;
-	int STEP_ALIMENTAZIONE = atoi(argv[0]);
+
+	STEP_ALIMENTAZIONE = atoi(argv[0]);
 	N_ATOM_MAX = atoi(argv[1]);
 
-	key_t key = ftok("master.c", 'x');
-	int semid = semget(key, 1, 0600);
+	key = ftok("master.c", 'x');
+	semid = semget(key, 1, 0600);
 
-	struct timespec timer;
 	timer.tv_sec = STEP_ALIMENTAZIONE;
 	timer.tv_nsec = TOT_NSEC;
 
 	P(semid, 0);
 	wait_for_zero(semid, 0);
 
-	while(true){
-		init_atom(REFUEL_Q);
+	while(1){
 		nanosleep(&timer, NULL);
+		init_atom(REFUEL_Q);
 	}
-
 }
 
 
@@ -60,7 +63,6 @@ void init_atom(int n){
 				case 0:
 					close(file_pipes[1]);
 					read(file_pipes[0], &atomic_number, sizeof(int));
-					//printf("Numero atomico del processo %d: %d\n", getpid(), atomic_number);
 					close(file_pipes[0]);  
 					char atomic_number_str[10];
 					sprintf(atomic_number_str, "%d", atomic_number);

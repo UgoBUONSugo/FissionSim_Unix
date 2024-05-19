@@ -15,7 +15,7 @@
 #include "external.h"
 
 #define TOT_NSEC 0
-#define N_ACTIVATIONS 3
+#define N_ACTIVATIONS 5
 
 struct msgbuf{
 	long mtype;
@@ -37,18 +37,23 @@ int main(int argc, char* argv[]){
 	int STEP_ATTIVATORE = atoi(argv[0]);
 	inhibitor_pid = atoi(argv[1]); 
 
+	if(*argv[2] == 'y'){
+		buf.mtype = inhibitor_pid;
+	}
+	else if(*argv[2] == 'n'){
+		buf.mtype = 1;
+	}
+
 	key_t key = ftok("master.c", 'x');
 	int semid = semget(key, 1, 0600);
 	int msgid = msgget(key, 0600);
-
-	buf.mtype = 1;
 
 	struct timespec timer;
 	timer.tv_sec = STEP_ATTIVATORE;
 	timer.tv_nsec = TOT_NSEC;
 
 	struct SimStats *shared_memory;
-	int m_id = shmget(key, sizeof(*shared_memory), 0600); 
+	int m_id = shmget(key, sizeof(*shared_memory), 0600);
 	shared_memory = (struct SimStats*) shmat(m_id, NULL, 0);
 
 	struct sigaction sa;
