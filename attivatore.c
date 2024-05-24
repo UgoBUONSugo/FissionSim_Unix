@@ -25,13 +25,6 @@ void inhib_switch(int signum);
 
 int inhibitor_pid;
 
-void toggle_signals(int block) {
-  sigset_t set;
-  sigemptyset(&set);
-  sigaddset(&set, SIGIO); 
-  sigprocmask(block ? SIG_BLOCK : SIG_UNBLOCK, &set, NULL);
-}
-
 int main(int argc, char* argv[]){
 	(void)argc;
 	int STEP_ATTIVATORE = atoi(argv[0]);
@@ -66,7 +59,7 @@ int main(int argc, char* argv[]){
 	
 	while(true)
 	{
-		toggle_signals(1);
+		toggle_signals(1, SIGIO);
 		for(int i = 0; i < N_ACTIVATIONS; i++){
 			msgsnd(msgid, &buf, sizeof(buf), 0);
 		}
@@ -74,7 +67,7 @@ int main(int argc, char* argv[]){
 		P(semid, 1);
  		shared_memory->activation_count += N_ACTIVATIONS;
 		V(semid, 1);
-		toggle_signals(0);
+		toggle_signals(0, SIGIO);
 		nanosleep(&timer, NULL);
 	}
 }

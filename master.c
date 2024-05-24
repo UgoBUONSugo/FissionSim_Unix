@@ -17,13 +17,12 @@
 #include <fcntl.h>
 #include "external.h"
 
-#define BLACKOUT 0
+#define BLACKOUT -1
 #define EXPLODE -2
 
 #define TOT_SEC 1
 #define TOT_NSEC 0
 
-void init_atom(int atoms_n);
 void sigio_handl(int signum);
 void init_supply();
 pid_t init_activator(char answ);
@@ -53,17 +52,9 @@ struct sembuf sops[1];
 pid_t inhibitor_pid;
 pid_t activator_pid;
 
-void toggle_signals(int block) {
-  sigset_t set;
-  sigemptyset(&set);
-  sigaddset(&set, SIGIO); 
-  sigprocmask(block ? SIG_BLOCK : SIG_UNBLOCK, &set, NULL);
-}
-
 int main(){
 	float ratio;
 	char answ;
-	struct timespec rem;
 
 	atexit(&sim_term);
 	get_var();
@@ -71,7 +62,6 @@ int main(){
 	struct sigaction sa;
 	memset(&sa, 0, sizeof(sa));
 	sa.sa_handler = inhib_switch;
-	//sa.sa_flags = SA_RESTART; //?????????????????????
 	sigaction(SIGIO, &sa, NULL);
 
 	long rem_energy = 10000;
@@ -93,8 +83,14 @@ int main(){
   shared_memory = (struct SimStats*) shmat(m_id, NULL, 0);
   memset(shared_memory, 0, sizeof(*shared_memory));
 
+  pid_t *master_pid;
+  int m_id2 = shmget(ftok("master.c", 'y'), sizeof(*master_pid), IPC_CREAT | 0600);
+  master_pid = (pid_t*) shmat(m_id2, NULL, 0);
+  memset(master_pid, 0, sizeof(*master_pid));
+  *master_pid = getpid();
+
 	inhibitor_pid = init_inhibitor();
-	init_atom(N_ATOMI_INIT);
+	init_atom(N_ATOMI_INIT, N_ATOM_MAX);
 	init_supply();
 
 
@@ -119,12 +115,12 @@ int main(){
 	P(semid, 0);
 	wait_for_zero(semid, 0);
 
-	alarm(SIM_DURATION); (void)rem;
+	alarm(SIM_DURATION);
 
 	while(true)
 	{ 
 
-		toggle_signals(1);
+		toggle_signals(1, SIGIO);
 		if(inhib_status == 1){
 			semctl(semid, 2, SETVAL, 1);
 			kill(inhibitor_pid, SIGUSR2);
@@ -159,23 +155,7 @@ int main(){
 
 		if((rem_energy -= ENERGY_DEM) < 0)
 		{
-			printf("|[\033[0;34m//\033[0;37m");
-			for(int i = 0; i < (ratio * 20) && i < 5; i++){
-				printf("\033[0;36m/");
-			}
-			for(int i = 5; i < (ratio * 20) && i < 15; i++){
-				printf("\033[0;32m/");
-			}
-			for(int i = 15; i <= (ratio * 20) && i <= 20; i++){
-				printf("\033[0;33m/");
-			}
-			for(int i = 0; i < (20 - (ratio * 20)); i++){
-				printf("\033[0;37m-");
-			}
-			printf("\033[0;31m//\033[0m]                     |\n");
-			printf(" ------------------------------------------------ \n");
-			printf("STATUS INIBITORE: ");
-			inhib_status == 0 ? printf("\x1B[31mOFF \033[0m\n\n") : printf("\x1B[32mON \033[0m\n\n");
+			SIM_PRINT;
 			sim_print(BLACKOUT);
 		}
 
@@ -184,30 +164,13 @@ int main(){
 
 		V(semid, 1);
 
-		printf("|[\033[0;34m//\033[0;37m");
-		for(int i = 0; i < (ratio * 20) && i < 5; i++){
-			printf("\033[0;36m/");
-		}
-		for(int i = 5; i < (ratio * 20) && i < 15; i++){
-			printf("\033[0;32m/");
-		}
-		for(int i = 15; i <= (ratio * 20) && i <= 20; i++){
-			printf("\033[0;33m/");
-		}
-		for(int i = 0; i < (20 - (ratio * 20)); i++){
-			printf("\033[0;37m-");
-		}
-		printf("\033[0;31m//\033[0m]                     |\n");
-		printf(" ------------------------------------------------ \n");
-		printf("STATUS INIBITORE: ");
-		inhib_status == 0 ? printf("\x1B[31mOFF \033[0m\n\n") : printf("\x1B[32mON \033[0m\n\n");
-
+		SIM_PRINT;
 		if(rem_energy > ENERGY_EXPLODE_THRESHOLD)
 		{
 			sim_print(EXPLODE);
 		}
 
-		toggle_signals(0); 
+		toggle_signals(0, SIGIO); 
 		nanosleep(&timer, NULL);
 
 		/*while(nanosleep(&timer, &rem) && errno==EINTR){
@@ -218,50 +181,10 @@ int main(){
 	
 }
 
-void init_atom(int n){
-  int atomic_number;
-	int file_pipes[2];
-
-	if (pipe(file_pipes) == 0)
-	{ 
-
-		for(int i = 0; i < n; i++)
-		{
-			switch (kid_pid = fork()){
-				case -1:
-					kill(getpid(), SIGUSR2);
-					break;
-
-				case 0:
-					close(file_pipes[1]);
-					read(file_pipes[0], &atomic_number, sizeof(int));
-					close(file_pipes[0]);  
-
-					char atomic_number_str[10];
-					sprintf(atomic_number_str, "%d", atomic_number);
-					char *argv[] = {"atomo", atomic_number_str, "0", NULL};
-					execve("atomo", argv, NULL);
-					break;
-
-				default:  
-					srand(kid_pid);
-					atomic_number = (rand()%N_ATOM_MAX) + 1;
-					write(file_pipes[1], &atomic_number, sizeof(int));
-					break;
-			}
-
-		}
-
-		close(file_pipes[0]);  
-		close(file_pipes[1]); 
-	}
-
-}
-
 pid_t init_activator(char answ){
 	switch (kid_pid = fork()) {
 		case -1:
-			//TEST_ERRORS
+			sim_print(SIGUSR2);
 			break;
 
 		case 0:
@@ -281,7 +204,7 @@ pid_t init_activator(char answ){
 void init_supply(){
 	switch (kid_pid = fork()) {
 		case -1:
-			//TEST_ERRORS
+			sim_print(SIGUSR2);
 			break;
 
 		case 0:
@@ -300,7 +223,7 @@ void init_supply(){
 pid_t init_inhibitor(){
 	switch (kid_pid = fork()) {
 		case -1:
-			//TEST_ERRORS
+			sim_print(SIGUSR2);
 			break;
 
 		case 0:
@@ -322,14 +245,14 @@ void sim_print(int signum){
 	switch(signum)
 	{
 		case SIGALRM:
-			printf("sim_print\n");
+			printf("Timeout\n");
 			break;
 
 		case SIGUSR2:
 			printf("Meltdown\n");
 			break;
 
-		case 0:
+		case -1:
 			printf("BLACKOUT\n");
 			break;
 
@@ -388,5 +311,6 @@ void sim_term(){
 	semctl(semget(key, 2, 0600), 0, IPC_RMID);
 	msgctl(msgget(key, 0600), IPC_RMID, NULL);
 	shmctl(shmget(key, sizeof(struct SimStats), IPC_CREAT | 0600), IPC_RMID, NULL);
+	shmctl(shmget(ftok("master.c", 'y'), sizeof(pid_t), IPC_CREAT | 0600), IPC_RMID, NULL);
 	printf("Memoria disallocata\n");
 }
