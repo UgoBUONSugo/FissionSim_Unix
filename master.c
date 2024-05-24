@@ -90,7 +90,7 @@ int main(){
   *master_pid = getpid();
 
 	inhibitor_pid = init_inhibitor();
-	init_atom(N_ATOMI_INIT, N_ATOM_MAX);
+	init_atom(N_ATOMI_INIT, N_ATOM_MAX, "0");
 	init_supply();
 
 

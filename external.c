@@ -43,7 +43,7 @@ void toggle_signals(int block, int sig){
   sigprocmask(block ? SIG_BLOCK : SIG_UNBLOCK, &set, NULL);
 }
 
-void init_atom(int n, int N_ATOM_MAX){
+void init_atom(int n, int N_ATOM_MAX, char *init){
 	pid_t kid_pid;
   int atomic_number;
 	int file_pipes[2];
@@ -68,7 +68,7 @@ void init_atom(int n, int N_ATOM_MAX){
 
 					char atomic_number_str[10];
 					sprintf(atomic_number_str, "%d", atomic_number);
-					char *argv[] = {"atomo", atomic_number_str, "0", NULL};
+					char *argv[] = {"atomo", atomic_number_str, init, NULL};
 					execve("atomo", argv, NULL);
 					break;
 

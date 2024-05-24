@@ -15,7 +15,6 @@
 #include "external.h"
 
 #define REFUEL_Q 2
-#define TOT_NSEC 0
 
 int N_ATOM_MAX;
 
@@ -33,13 +32,13 @@ int main(int argc, char* argv[]){
 	semid = semget(key, 1, 0600);
 
 	timer.tv_sec = STEP_ALIMENTAZIONE;
-	timer.tv_nsec = TOT_NSEC;
+	timer.tv_nsec = 0;
 
 	P(semid, 0);
 	wait_for_zero(semid, 0);
 
 	while(1){
 		nanosleep(&timer, NULL);
-		init_atom(REFUEL_Q, N_ATOM_MAX);
+		init_atom(REFUEL_Q, N_ATOM_MAX, "1");
 	}
 }

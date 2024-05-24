@@ -31,5 +31,5 @@ int P(int sem_id, int n);
 int V(int sem_id, int n);
 int wait_for_zero(int sem_id, int n);
 void sim_end();
-int init_atom(int n, int N_ATOM_MAX);
+int init_atom(int n, int N_ATOM_MAX, char *init);
 void toggle_signals(int block, int sig);
