@@ -165,10 +165,7 @@ int main(){
 		V(semid, 1);
 
 		SIM_PRINT;
-		if(rem_energy > ENERGY_EXPLODE_THRESHOLD)
-		{
-			sim_print(EXPLODE);
-		}
+		if(rem_energy > ENERGY_EXPLODE_THRESHOLD) sim_print(EXPLODE);
 
 		toggle_signals(0, SIGIO); 
 		nanosleep(&timer, NULL);
