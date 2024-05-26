@@ -20,12 +20,9 @@
 #define BLACKOUT -1
 #define EXPLODE -2
 
-#define TOT_SEC 1
-#define TOT_NSEC 0
-
 void sigio_handl(int signum);
-void init_supply();
-pid_t init_activator(char answ);
+void init_supply(char *STEP_ALIMENTAZIONE, int N_ATOM_MAX);
+pid_t init_activator(char answ, int inhibitor_pid, char *STEP_ATTIVATORE);
 pid_t init_inhibitor();
 void inhib_switch();
 void get_var();
@@ -36,36 +33,54 @@ struct msgbuf{
 	long mtype;
 };
 
-int ENERGY_DEM;
-int N_ATOMI_INIT;
-int N_ATOM_MAX;
-int SIM_DURATION;
-int ENERGY_EXPLODE_THRESHOLD;
-char *STEP_ATTIVATORE;
-char *STEP_ALIMENTAZIONE;
-
-int semid;
 int inhib_status;
-pid_t kid_pid;
-key_t key;
-struct sembuf sops[1];
-pid_t inhibitor_pid;
 pid_t activator_pid;
 
 int main(){
 	float ratio;
 	char answ;
+	struct sigaction sa;
+	long rem_energy = 10000;
+	struct SimStats overall_stats;
+	int msgid;
+	int semid;
+	struct SimStats *shared_memory;
+	int m_id;
+	pid_t *master_pid;
+	int m_id2;
+	struct timespec timer;
+	key_t key;
+	pid_t inhibitor_pid;
+	int ENERGY_DEM;
+	int N_ATOMI_INIT;
+	int N_ATOM_MAX;
+	int SIM_DURATION;
+	int ENERGY_EXPLODE_THRESHOLD;
+	char *STEP_ATTIVATORE;
+	char *STEP_ALIMENTAZIONE;
 
 	atexit(&sim_term);
-	get_var();
 
-	struct sigaction sa;
+	//Setting parameters values as enviorment variables
+	setenv("ENERGY_DEM", "600", 0);
+	ENERGY_DEM = atoi(getenv("ENERGY_DEM"));
+	setenv("N_ATOMI_INIT", "50", 0);
+	N_ATOMI_INIT = atoi(getenv("N_ATOMI_INIT"));
+	setenv("N_ATOM_MAX", "100", 0);
+	N_ATOM_MAX = atoi(getenv("N_ATOM_MAX"));
+	setenv("STEP_ATTIVATORE", "1", 0);
+	STEP_ATTIVATORE = getenv("STEP_ATTIVATORE");
+	setenv("STEP_ALIMENTAZIONE", "3", 0);
+	STEP_ALIMENTAZIONE = getenv("STEP_ALIMENTAZIONE");
+	setenv("SIM_DURATION", "30", 0);
+	SIM_DURATION = atoi(getenv("SIM_DURATION"));
+	setenv("ENERGY_EXPLODE_THRESHOLD", "30000", 0);
+	ENERGY_EXPLODE_THRESHOLD = atoi(getenv("ENERGY_EXPLODE_THRESHOLD"));
+	
 	memset(&sa, 0, sizeof(sa));
 	sa.sa_handler = inhib_switch;
 	sigaction(SIGIO, &sa, NULL);
 
-	long rem_energy = 10000;
-	struct SimStats overall_stats;
 	memset(&overall_stats, 0, sizeof(overall_stats));
   
 	signal(SIGUSR2, sim_print); 
@@ -76,23 +91,20 @@ int main(){
 	semctl(semid, 1, SETVAL, 1);								//Sem mutex per accedere alla SM
 	semctl(semid, 2, SETVAL, 1);								//Sem per comunicazione master-inibitore
 
-  int msgid = msgget(key, IPC_CREAT | 0600); (void)msgid;
+  msgid = msgget(key, IPC_CREAT | 0600); (void)msgid;
 
-  struct SimStats *shared_memory;
-  int m_id = shmget(key, sizeof(*shared_memory), IPC_CREAT | 0600);
+  m_id = shmget(key, sizeof(*shared_memory), IPC_CREAT | 0600);
   shared_memory = (struct SimStats*) shmat(m_id, NULL, 0);
   memset(shared_memory, 0, sizeof(*shared_memory));
 
-  pid_t *master_pid;
-  int m_id2 = shmget(ftok("master.c", 'y'), sizeof(*master_pid), IPC_CREAT | 0600);
+  m_id2 = shmget(ftok("master.c", 'y'), sizeof(*master_pid), IPC_CREAT | 0600);
   master_pid = (pid_t*) shmat(m_id2, NULL, 0);
   memset(master_pid, 0, sizeof(*master_pid));
   *master_pid = getpid();
 
 	inhibitor_pid = init_inhibitor();
 	init_atom(N_ATOMI_INIT, N_ATOM_MAX, "0");
-	init_supply();
-
+	init_supply(STEP_ALIMENTAZIONE, N_ATOM_MAX);
 
 	printf("Attivare il processo inibitore?(y/n) ");
 	scanf(" %c", &answ);
@@ -100,14 +112,13 @@ int main(){
 		printf("Rispondere 'y' oppure 'n': ");
 		scanf(" %c", &answ);
 	}
-	activator_pid = init_activator(answ);
+	activator_pid = init_activator(answ, inhibitor_pid, STEP_ATTIVATORE);
 	inhib_status = answ == 'y' ? 1 : 0;
 
 	signal(SIGALRM, sim_print);
 
-	struct timespec timer;
-	timer.tv_sec = TOT_SEC;
-	timer.tv_nsec = TOT_NSEC;
+	timer.tv_sec = 1;
+	timer.tv_nsec = 0;
 
 	fcntl(0, F_SETOWN, getpid());
 	fcntl(0, F_SETFL, O_NONBLOCK | O_ASYNC);
@@ -178,7 +189,9 @@ int main(){
 	
 }
 
-pid_t init_activator(char answ){
+pid_t init_activator(char answ, int inhibitor_pid, char *STEP_ATTIVATORE){
+	pid_t kid_pid;
+
 	switch (kid_pid = fork()) {
 		case -1:
 			sim_print(SIGUSR2);
@@ -186,8 +199,13 @@ pid_t init_activator(char answ){
 
 		case 0:
 			char inhib_pid[20]; 
+			char *argv[4];
+
 			sprintf(inhib_pid, "%d", inhibitor_pid);
-			char *argv[] = {STEP_ATTIVATORE, inhib_pid, &answ, NULL};
+			argv[0] = STEP_ATTIVATORE;
+			argv[1] = inhib_pid;
+			argv[2] = &answ;
+			argv[3] = NULL;
 			execve("attivatore", argv, NULL);
 			break;
 
@@ -198,16 +216,22 @@ pid_t init_activator(char answ){
 	return kid_pid;
 }
 
-void init_supply(){
+void init_supply(char *STEP_ALIMENTAZIONE, int N_ATOM_MAX){
+	pid_t kid_pid;
+
 	switch (kid_pid = fork()) {
 		case -1:
 			sim_print(SIGUSR2);
 			break;
 
 		case 0:
-			char atom_max[20]; 
+			char atom_max[20];
+			char *argv[3];
+
 			sprintf(atom_max, "%d", N_ATOM_MAX);
-			char *argv[] = {STEP_ALIMENTAZIONE, atom_max, NULL};
+			argv[0] = STEP_ALIMENTAZIONE;
+			argv[1] = atom_max;
+			argv[2] = NULL;
 			execve("alimentazione", argv, NULL);
 			break;
 
@@ -218,6 +242,8 @@ void init_supply(){
 }
 
 pid_t init_inhibitor(){
+	pid_t kid_pid;
+
 	switch (kid_pid = fork()) {
 		case -1:
 			sim_print(SIGUSR2);
@@ -267,29 +293,6 @@ void sim_print(int signum){
 	exit(EXIT_SUCCESS);
 }
 
-void get_var(){
-	setenv("ENERGY_DEM", "600", 0);
-	ENERGY_DEM = atoi(getenv("ENERGY_DEM"));
-
-	setenv("N_ATOMI_INIT", "50", 0);
-	N_ATOMI_INIT = atoi(getenv("N_ATOMI_INIT"));
-
-	setenv("N_ATOM_MAX", "100", 0);
-	N_ATOM_MAX = atoi(getenv("N_ATOM_MAX"));
-
-	setenv("STEP_ATTIVATORE", "1", 0);
-	STEP_ATTIVATORE = getenv("STEP_ATTIVATORE");
-
-	setenv("STEP_ALIMENTAZIONE", "3", 0);
-	STEP_ALIMENTAZIONE = getenv("STEP_ALIMENTAZIONE");
-
-	setenv("SIM_DURATION", "30", 0);
-	SIM_DURATION = atoi(getenv("SIM_DURATION"));
-
-	setenv("ENERGY_EXPLODE_THRESHOLD", "30000", 0);
-	ENERGY_EXPLODE_THRESHOLD = atoi(getenv("ENERGY_EXPLODE_THRESHOLD"));
-}
-
 void sigio_handl(int signum){
 	(void)signum;
 	inhib_switch();
@@ -301,6 +304,8 @@ void inhib_switch(){
 }
 
 void sim_term(){
+	int key;
+
 	signal(SIGUSR1, SIG_IGN);
 	kill(0, SIGUSR1);
 
