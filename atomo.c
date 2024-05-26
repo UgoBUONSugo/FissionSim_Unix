@@ -45,7 +45,7 @@ int main(int argc, char* argv[]){
 
 	while(true)
 	{
-		msgrcv(queid, &buf, sizeof(buf), 1, 0);
+		msgrcv(queid, NULL, 0, 1, 0);
 		atomic_number = split_atom(atomic_number, shared_memory, semid);
 	}
 

@@ -58,7 +58,7 @@ int main(){
 
 	while(true){
 start:
-		msgrcv(msgid, &buf, sizeof(buf), self_pid, 0);
+		msgrcv(msgid, &buf, 0, self_pid, 0);
 		if (errno) {
 	    	if (errno == EINTR){ errno = 0; goto start;}
 		    else{TEST_ERROR}
@@ -67,7 +67,7 @@ start:
 
 finish:
 		if( (rand()%10+1) > 6){
-			msgsnd(msgid, &buf, sizeof(buf), 0);
+			msgsnd(msgid, &buf, 0, 0);
 			if (errno) {
 		    	if (errno == EINTR){ errno = 0; goto finish;}
 			    else{TEST_ERROR}

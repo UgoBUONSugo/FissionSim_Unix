@@ -61,7 +61,7 @@ int main(int argc, char* argv[]){
 	{
 		toggle_signals(1, SIGIO);
 		for(int i = 0; i < N_ACTIVATIONS; i++){
-			msgsnd(msgid, &buf, sizeof(buf), 0);
+			msgsnd(msgid, &buf, 0, 0);
 		}
 
 		P(semid, 1);
