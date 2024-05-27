@@ -20,40 +20,39 @@
 #define BLACKOUT -1
 #define EXPLODE -2
 
-void sigio_handl(int signum);
-void init_supply(char *STEP_ALIMENTAZIONE, int N_ATOM_MAX);
 pid_t init_activator(char answ, int inhibitor_pid, char *STEP_ATTIVATORE);
 pid_t init_inhibitor();
-void inhib_switch();
-void get_var();
-void sim_print();
+void init_supply(char *STEP_ALIMENTAZIONE, int N_ATOM_MAX);
 void sim_term();
+void sim_print();
+void inhib_switch();
+void sigio_handl(int signum);
 
 int inhib_status;
 pid_t activator_pid;
 
 int main(){
-	float ratio;
-	char answ;
-	struct sigaction sa;
-	long rem_energy = 10000;
-	struct SimStats overall_stats;
-	int msgid;
-	int semid;
-	struct SimStats *shared_memory;
-	int m_id;
-	pid_t *master_pid;
-	int m_id2;
-	struct timespec timer;
-	key_t key;
-	pid_t inhibitor_pid;
+	int N_ATOM_MAX;
 	int ENERGY_DEM;
 	int N_ATOMI_INIT;
-	int N_ATOM_MAX;
 	int SIM_DURATION;
 	int ENERGY_EXPLODE_THRESHOLD;
 	char *STEP_ATTIVATORE;
 	char *STEP_ALIMENTAZIONE;
+	struct SimStats overall_stats;
+	struct SimStats *shared_memory;
+	struct sigaction sa;
+	struct timespec timer;
+	int msgid;
+	int m_id;
+	int m_id2;
+	int semid;
+	char answ;
+	float ratio;
+	long rem_energy = 10000;
+	key_t key;
+	pid_t inhibitor_pid;
+	pid_t *master_pid;
 
 	atexit(&sim_term);
 
@@ -126,7 +125,6 @@ int main(){
 
 	while(true)
 	{ 
-
 		toggle_signals(1, SIGIO);
 		if(inhib_status == 1)
 		{
@@ -263,7 +261,6 @@ pid_t init_inhibitor(){
 void sim_print(int signum){
 	printf("\n-----------------------------------");
 	printf("\nSimulazione terminata per: ");
-
 	switch(signum)
 	{
 		case SIGALRM:

@@ -32,7 +32,7 @@ int main(int argc, char* argv[]){
 	int semid = semget(key, 1, 0600);
 	int queid = msgget(key, 0600);
 
-	if(init == 0) 			//Se init=1 allora il processo è stato creato durante l'esec del programma e non ha bisogno di sincronizzarsi
+	if(init == 0) 			//Init=1 -> atom process created during exe of the program -> no need for synchronization
 	{     
 		P(semid, 0); 
 		wait_for_zero(semid, 0);		
@@ -48,7 +48,6 @@ int main(int argc, char* argv[]){
 }
 
 int split_atom(int atomic_number, struct SimStats *shared_memory, int semid){
-
 	if(atomic_number <= 1)
 	{
 		P(semid, 1);

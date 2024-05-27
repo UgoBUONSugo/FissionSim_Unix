@@ -19,11 +19,11 @@
 int N_ATOM_MAX;
 
 int main(int argc, char* argv[]){
-	key_t key;
+	(void)argc;
 	int STEP_ALIMENTAZIONE;
 	int semid;
 	struct timespec timer;
-	(void)argc;
+	key_t key;
 
 	STEP_ALIMENTAZIONE = atoi(argv[0]);
 	N_ATOM_MAX = atoi(argv[1]);

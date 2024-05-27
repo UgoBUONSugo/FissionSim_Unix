@@ -17,11 +17,10 @@
 #define TOT_NSEC 0
 #define N_ACTIVATIONS 5
 
-struct msgbuf buf;
-
 void inhib_switch(int signum);
 
 int inhibitor_pid;
+struct msgbuf buf;
 
 int main(int argc, char* argv[]){
 	(void)argc;
