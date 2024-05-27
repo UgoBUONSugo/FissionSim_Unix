@@ -17,9 +17,7 @@
 #define TOT_NSEC 0
 #define N_ACTIVATIONS 5
 
-struct msgbuf{
-	long mtype;
-}buf;
+struct msgbuf buf;
 
 void inhib_switch(int signum);
 

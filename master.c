@@ -1,20 +1,20 @@
 #define _POSIX_SOURCE
 #define _DEFAULT_SOURCE
+#include <time.h>
 #include <stdio.h>
+#include <errno.h>
+#include <fcntl.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdbool.h>
 #include <stddef.h>
-#include <sys/types.h>
 #include <unistd.h>
-#include <errno.h>
-#include <time.h>
+#include <signal.h>
+#include <stdbool.h>
 #include <sys/sem.h>
 #include <sys/shm.h>
 #include <sys/ipc.h>
 #include <sys/msg.h>
-#include <signal.h>
-#include <fcntl.h>
+#include <sys/types.h>
 #include "external.h"
 
 #define BLACKOUT -1
@@ -28,10 +28,6 @@ void inhib_switch();
 void get_var();
 void sim_print();
 void sim_term();
-
-struct msgbuf{
-	long mtype;
-};
 
 int inhib_status;
 pid_t activator_pid;
@@ -64,16 +60,16 @@ int main(){
 	//Setting parameters values as enviorment variables
 	setenv("ENERGY_DEM", "600", 0);
 	ENERGY_DEM = atoi(getenv("ENERGY_DEM"));
-	setenv("N_ATOMI_INIT", "50", 0);
-	N_ATOMI_INIT = atoi(getenv("N_ATOMI_INIT"));
 	setenv("N_ATOM_MAX", "100", 0);
 	N_ATOM_MAX = atoi(getenv("N_ATOM_MAX"));
+	setenv("SIM_DURATION", "30", 0);
+	SIM_DURATION = atoi(getenv("SIM_DURATION"));
+	setenv("N_ATOMI_INIT", "50", 0);
+	N_ATOMI_INIT = atoi(getenv("N_ATOMI_INIT"));
 	setenv("STEP_ATTIVATORE", "1", 0);
 	STEP_ATTIVATORE = getenv("STEP_ATTIVATORE");
 	setenv("STEP_ALIMENTAZIONE", "3", 0);
 	STEP_ALIMENTAZIONE = getenv("STEP_ALIMENTAZIONE");
-	setenv("SIM_DURATION", "30", 0);
-	SIM_DURATION = atoi(getenv("SIM_DURATION"));
 	setenv("ENERGY_EXPLODE_THRESHOLD", "30000", 0);
 	ENERGY_EXPLODE_THRESHOLD = atoi(getenv("ENERGY_EXPLODE_THRESHOLD"));
 	
@@ -81,15 +77,18 @@ int main(){
 	sa.sa_handler = inhib_switch;
 	sigaction(SIGIO, &sa, NULL);
 
-	memset(&overall_stats, 0, sizeof(overall_stats));
+  memset(&sa, 0, sizeof(sa));
+	sa.sa_handler = sim_print;
+	sigaction(SIGUSR2, &sa, NULL);
+	sigaction(SIGALRM, &sa, NULL);
   
-	signal(SIGUSR2, sim_print); 
+	memset(&overall_stats, 0, sizeof(overall_stats));
 
 	key = ftok("master.c", 'x');
 	semid = semget(key, 3, IPC_CREAT | 0600);
-	semctl(semid, 0, SETVAL, N_ATOMI_INIT + 4); //Sem per sync inizio
-	semctl(semid, 1, SETVAL, 1);								//Sem mutex per accedere alla SM
-	semctl(semid, 2, SETVAL, 1);								//Sem per comunicazione master-inibitore
+	semctl(semid, 0, SETVAL, N_ATOMI_INIT + 4); //Initial sync sem
+	semctl(semid, 1, SETVAL, 1);								//Mutex sem to access shared memory
+	semctl(semid, 2, SETVAL, 1);								//Sem used for master-inhibitor comms
 
   msgid = msgget(key, IPC_CREAT | 0600); (void)msgid;
 
@@ -115,8 +114,6 @@ int main(){
 	activator_pid = init_activator(answ, inhibitor_pid, STEP_ATTIVATORE);
 	inhib_status = answ == 'y' ? 1 : 0;
 
-	signal(SIGALRM, sim_print);
-
 	timer.tv_sec = 1;
 	timer.tv_nsec = 0;
 
@@ -125,22 +122,21 @@ int main(){
 
 	P(semid, 0);
 	wait_for_zero(semid, 0);
-
 	alarm(SIM_DURATION);
 
 	while(true)
 	{ 
 
 		toggle_signals(1, SIGIO);
-		if(inhib_status == 1){
+		if(inhib_status == 1)
+		{
 			semctl(semid, 2, SETVAL, 1);
 			kill(inhibitor_pid, SIGUSR2);
 			wait_for_zero(semid, 2);
 		}
-		else{
-			P(semid, 1);
-		}
+		else P(semid, 1);
 
+		//Critic section begins
 		overall_stats.activation_count += shared_memory->activation_count;
 		overall_stats.split_count += shared_memory->split_count;
 		overall_stats.activation_interrupted += shared_memory->activation_interrupted;
@@ -170,8 +166,9 @@ int main(){
 			sim_print(BLACKOUT);
 		}
 
-		bzero(shared_memory, sizeof(struct SimStats)); //Reset a zero della sm
+		bzero(shared_memory, sizeof(struct SimStats));
 		shared_memory->consumed_energy = ENERGY_DEM;
+		//Critic section end
 
 		V(semid, 1);
 
@@ -180,7 +177,6 @@ int main(){
 
 		toggle_signals(0, SIGIO); 
 		nanosleep(&timer, NULL);
-
 		/*while(nanosleep(&timer, &rem) && errno==EINTR){
         timer = rem;
     }
@@ -192,7 +188,8 @@ int main(){
 pid_t init_activator(char answ, int inhibitor_pid, char *STEP_ATTIVATORE){
 	pid_t kid_pid;
 
-	switch (kid_pid = fork()) {
+	switch (kid_pid = fork())
+	{
 		case -1:
 			sim_print(SIGUSR2);
 			break;
@@ -219,7 +216,8 @@ pid_t init_activator(char answ, int inhibitor_pid, char *STEP_ATTIVATORE){
 void init_supply(char *STEP_ALIMENTAZIONE, int N_ATOM_MAX){
 	pid_t kid_pid;
 
-	switch (kid_pid = fork()) {
+	switch (kid_pid = fork())
+	{
 		case -1:
 			sim_print(SIGUSR2);
 			break;
@@ -244,7 +242,8 @@ void init_supply(char *STEP_ALIMENTAZIONE, int N_ATOM_MAX){
 pid_t init_inhibitor(){
 	pid_t kid_pid;
 
-	switch (kid_pid = fork()) {
+	switch (kid_pid = fork())
+	{
 		case -1:
 			sim_print(SIGUSR2);
 			break;

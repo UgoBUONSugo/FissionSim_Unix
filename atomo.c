@@ -13,18 +13,13 @@
 #include <sys/msg.h>
 #include <signal.h>
 #include "external.h"
-
 #define MAX(x, y) (((x) > (y)) ? (x) : (y))
-
-struct msgbuf{
-	long mtype;
-} buf;
 
 int split_atom(int atomic_number, struct SimStats *shared_memory, int semid);
 
 int main(int argc, char* argv[]){
 	(void)argc;
-
+	
 	int atomic_number = atoi(argv[1]);
 	int init = atoi(argv[2]);
 

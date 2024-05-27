@@ -14,10 +14,6 @@
 #include <signal.h>
 #include "external.h"
 
-struct msgbuf{
-	long mtype;
-};
-
 #define TEST_ERROR    if (errno) {dprintf(STDERR_FILENO,		\
 					  "%s:%d: PID=%5d: Error %d (%s)\n", \
 					  __FILE__,			\
