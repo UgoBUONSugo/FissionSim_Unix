@@ -20,13 +20,13 @@
 #define BLACKOUT -1
 #define EXPLODE -2
 
-pid_t init_activator(char answ, int inhibitor_pid, char *STEP_ATTIVATORE);
 pid_t init_inhibitor();
-void init_supply(char *STEP_ALIMENTAZIONE, int N_ATOM_MAX);
-void sim_term();
-void sim_print();
-void inhib_switch();
+pid_t init_activator(char answ, int inhibitor_pid, char *STEP_ATTIVATORE);
+void init_supply(char *STEP_ALIMENTAZIONE, int N_ATOM_MAX, char *N_NUOVI_ATOMI);
 void sigio_handl(int signum);
+void inhib_switch();
+void sim_print();
+void sim_term();
 
 int inhib_status;
 pid_t activator_pid;
@@ -37,6 +37,7 @@ int main(){
 	int N_ATOMI_INIT;
 	int SIM_DURATION;
 	int ENERGY_EXPLODE_THRESHOLD;
+	char *N_NUOVI_ATOMI;
 	char *STEP_ATTIVATORE;
 	char *STEP_ALIMENTAZIONE;
 	struct SimStats overall_stats;
@@ -65,9 +66,11 @@ int main(){
 	SIM_DURATION = atoi(getenv("SIM_DURATION"));
 	setenv("N_ATOMI_INIT", "50", 0);
 	N_ATOMI_INIT = atoi(getenv("N_ATOMI_INIT"));
+	setenv("N_NUOVI_ATOMI", "5", 0);
+	N_NUOVI_ATOMI = getenv("N_NUOVI_ATOMI");
 	setenv("STEP_ATTIVATORE", "1", 0);
 	STEP_ATTIVATORE = getenv("STEP_ATTIVATORE");
-	setenv("STEP_ALIMENTAZIONE", "3", 0);
+	setenv("STEP_ALIMENTAZIONE", "10000000", 0);
 	STEP_ALIMENTAZIONE = getenv("STEP_ALIMENTAZIONE");
 	setenv("ENERGY_EXPLODE_THRESHOLD", "30000", 0);
 	ENERGY_EXPLODE_THRESHOLD = atoi(getenv("ENERGY_EXPLODE_THRESHOLD"));
@@ -101,12 +104,13 @@ int main(){
   *master_pid = getpid();
 
 	inhibitor_pid = init_inhibitor();
-	init_atom(N_ATOMI_INIT, N_ATOM_MAX, "0");
-	init_supply(STEP_ALIMENTAZIONE, N_ATOM_MAX);
+	init_atom(N_ATOMI_INIT, N_ATOM_MAX, "1");
+	init_supply(STEP_ALIMENTAZIONE, N_ATOM_MAX, N_NUOVI_ATOMI);
 
 	printf("Attivare il processo inibitore?(y/n) ");
 	scanf(" %c", &answ);
-	while(answ != 'y' && answ != 'n'){
+	while(answ != 'y' && answ != 'n')
+	{
 		printf("Rispondere 'y' oppure 'n': ");
 		scanf(" %c", &answ);
 	}
@@ -123,7 +127,7 @@ int main(){
 	wait_for_zero(semid, 0);
 	alarm(SIM_DURATION);
 
-	while(true)
+	while(1)
 	{ 
 		toggle_signals(1, SIGIO);
 		if(inhib_status == 1)
@@ -211,7 +215,7 @@ pid_t init_activator(char answ, int inhibitor_pid, char *STEP_ATTIVATORE){
 	return kid_pid;
 }
 
-void init_supply(char *STEP_ALIMENTAZIONE, int N_ATOM_MAX){
+void init_supply(char *STEP_ALIMENTAZIONE, int N_ATOM_MAX, char *N_NUOVI_ATOMI){
 	pid_t kid_pid;
 
 	switch (kid_pid = fork())
@@ -222,12 +226,13 @@ void init_supply(char *STEP_ALIMENTAZIONE, int N_ATOM_MAX){
 
 		case 0:
 			char atom_max[20];
-			char *argv[3];
+			char *argv[4];
 
 			sprintf(atom_max, "%d", N_ATOM_MAX);
 			argv[0] = STEP_ALIMENTAZIONE;
 			argv[1] = atom_max;
-			argv[2] = NULL;
+			argv[2] = N_NUOVI_ATOMI;
+			argv[3] = NULL;
 			execve("alimentazione", argv, NULL);
 			break;
 

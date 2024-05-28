@@ -14,31 +14,31 @@
 #include <signal.h>
 #include "external.h"
 
-#define REFUEL_Q 2
-
-int N_ATOM_MAX;
-
 int main(int argc, char* argv[]){
 	(void)argc;
 	int STEP_ALIMENTAZIONE;
+	int N_NUOVI_ATOMI;
+	int N_ATOM_MAX;
 	int semid;
 	struct timespec timer;
 	key_t key;
 
 	STEP_ALIMENTAZIONE = atoi(argv[0]);
 	N_ATOM_MAX = atoi(argv[1]);
+	N_NUOVI_ATOMI = atoi(argv[2]);
 
 	key = ftok("master.c", 'x');
 	semid = semget(key, 1, 0600);
 
-	timer.tv_sec = STEP_ALIMENTAZIONE;
-	timer.tv_nsec = 0;
+	timer.tv_sec = 0;
+	timer.tv_nsec = STEP_ALIMENTAZIONE;
 
 	P(semid, 0);
 	wait_for_zero(semid, 0);
 
-	while(1){
+	while(1)
+	{
 		nanosleep(&timer, NULL);
-		init_atom(REFUEL_Q, N_ATOM_MAX, "1");
+		init_atom(N_NUOVI_ATOMI, N_ATOM_MAX, "0");
 	}
 }

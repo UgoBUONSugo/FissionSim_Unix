@@ -32,7 +32,7 @@ int main(int argc, char* argv[]){
 	int semid = semget(key, 1, 0600);
 	int queid = msgget(key, 0600);
 
-	if(init == 0) 			//Init=1 -> atom process created during exe of the program -> no need for synchronization
+	if(init) 			//Init=1 -> atom process created during exe of the program -> no need for synchronization
 	{     
 		P(semid, 0); 
 		wait_for_zero(semid, 0);		
@@ -65,19 +65,27 @@ int split_atom(int atomic_number, struct SimStats *shared_memory, int semid){
 	{ 
 		switch (kid_pid = fork()) {
 			case -1:
-				dprintf(STDERR_FILENO,"%s:%d: PID=%5d: Error %d (%s)\n", __FILE__, __LINE__, getpid(),	errno, strerror(errno));
-				exit(0);
+				key_t key = ftok("master.c", 'y');
+				pid_t *master_pid;
+				int m_id = shmget(key, sizeof(*master_pid), 0600);
+				master_pid = (pid_t*) shmat(m_id, NULL, 0);
+				kill(*master_pid, SIGUSR2);
 				break;
 
 			case 0:
+				char atomic_number_str[10];
+				char *argv[4];
+
 				close(file_pipes[1]);
 
 				read(file_pipes[0], &atomic_number, sizeof(int));
 				close(file_pipes[0]);  
-
-				char atomic_number_str[10];
+		
 				sprintf(atomic_number_str, "%d", atomic_number);
-				char *argv[] = {"atomo", atomic_number_str, "1", NULL};
+				argv[0] = "atomo";
+				argv[1] = atomic_number_str;
+				argv[2] = "0";
+				argv[3] = NULL;
 				execve("atomo", argv, NULL); 
 				break;
 
