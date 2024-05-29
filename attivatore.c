@@ -24,32 +24,34 @@ struct msgbuf buf;
 
 int main(int argc, char* argv[]){
 	(void)argc;
-	int STEP_ATTIVATORE = atoi(argv[0]);
-	inhibitor_pid = atoi(argv[1]); 
-
-	if(*argv[2] == 'y'){
-		buf.mtype = inhibitor_pid;
-	}
-	else if(*argv[2] == 'n'){
-		buf.mtype = 1;
-	}
-
-	key_t key = ftok("master.c", 'x');
-	int semid = semget(key, 1, 0600);
-	int msgid = msgget(key, 0600);
-
+	key_t key;
+	int m_id;
+	int msgid;
+	int semid;
+	int STEP_ATTIVATORE;
+	struct sigaction sa;
 	struct timespec timer;
+	struct SimStats *shared_memory;
+
+	STEP_ATTIVATORE = atoi(argv[1]);
+	inhibitor_pid = atoi(argv[2]); 
+
+	if(*argv[3] == 'y') buf.mtype = inhibitor_pid;
+	else buf.mtype = 1;
+
+	key = ftok("master.c", 'x');
+	semid = semget(key, 1, 0600);
+	msgid = msgget(key, 0600);
+
 	timer.tv_sec = STEP_ATTIVATORE;
 	timer.tv_nsec = TOT_NSEC;
 
-	struct SimStats *shared_memory;
-	int m_id = shmget(key, sizeof(*shared_memory), 0600);
+	m_id = shmget(key, sizeof(*shared_memory), 0600);
 	shared_memory = (struct SimStats*) shmat(m_id, NULL, 0);
 
-	struct sigaction sa;
 	bzero(&sa, sizeof(sa));
 	sa.sa_handler = &inhib_switch;
-	sigaction (SIGIO, &sa, NULL);
+	sigaction(SIGIO, &sa, NULL);
 
 	P(semid, 0);
 	wait_for_zero(semid, 0);
@@ -57,7 +59,8 @@ int main(int argc, char* argv[]){
 	while(true)
 	{
 		toggle_signals(1, SIGIO);
-		for(int i = 0; i < N_ACTIVATIONS; i++){
+		for(int i = 0; i < N_ACTIVATIONS; i++)
+		{
 			msgsnd(msgid, &buf, 0, 0);
 		}
 

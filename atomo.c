@@ -19,18 +19,24 @@ int split_atom(int atomic_number, struct SimStats *shared_memory, int semid);
 
 int main(int argc, char* argv[]){
 	(void)argc;
-	
-	int atomic_number = atoi(argv[1]);
-	int init = atoi(argv[2]);
-
-	key_t key = ftok("master.c", 'x');
-
+	int init;
+	int m_id;
+	int semid;
+	int queid;
+	int atomic_number;
+	key_t key;
 	struct SimStats *shared_memory;
-	int m_id = shmget(key, sizeof(*shared_memory), 0600); 
+	
+	atomic_number = atoi(argv[1]);
+	init = atoi(argv[2]);
+
+	key = ftok("master.c", 'x');
+
+	m_id = shmget(key, sizeof(*shared_memory), 0600); 
 	shared_memory = (struct SimStats*) shmat(m_id, NULL, 0); 
 
-	int semid = semget(key, 1, 0600);
-	int queid = msgget(key, 0600);
+	semid = semget(key, 1, 0600);
+	queid = msgget(key, 0600);
 
 	if(init) 			//Init=1 -> atom process created during exe of the program -> no need for synchronization
 	{     
@@ -57,13 +63,14 @@ int split_atom(int atomic_number, struct SimStats *shared_memory, int semid){
 		exit(0);
 	}
 
+	int kid_atomic_number;
 	int file_pipes[2];
 	pid_t kid_pid;
-	int kid_atomic_number;
 
 	if (pipe(file_pipes) == 0) 
 	{ 
-		switch (kid_pid = fork()) {
+		switch (kid_pid = fork())
+		{
 			case -1:
 				key_t key = ftok("master.c", 'y');
 				pid_t *master_pid;
@@ -79,7 +86,7 @@ int split_atom(int atomic_number, struct SimStats *shared_memory, int semid){
 				close(file_pipes[1]);
 
 				read(file_pipes[0], &atomic_number, sizeof(int));
-				close(file_pipes[0]);  
+				close(file_pipes[0]);
 		
 				sprintf(atomic_number_str, "%d", atomic_number);
 				argv[0] = "atomo";

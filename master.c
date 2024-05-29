@@ -198,13 +198,14 @@ pid_t init_activator(char answ, int inhibitor_pid, char *STEP_ATTIVATORE){
 
 		case 0:
 			char inhib_pid[20]; 
-			char *argv[4];
+			char *argv[5];
 
 			sprintf(inhib_pid, "%d", inhibitor_pid);
-			argv[0] = STEP_ATTIVATORE;
-			argv[1] = inhib_pid;
-			argv[2] = &answ;
-			argv[3] = NULL;
+			argv[0] = "attivatore";
+			argv[1] = STEP_ATTIVATORE;
+			argv[2] = inhib_pid;
+			argv[3] = &answ;
+			argv[4] = NULL;
 			execve("attivatore", argv, NULL);
 			break;
 
@@ -226,13 +227,14 @@ void init_supply(char *STEP_ALIMENTAZIONE, int N_ATOM_MAX, char *N_NUOVI_ATOMI){
 
 		case 0:
 			char atom_max[20];
-			char *argv[4];
+			char *argv[5];
 
 			sprintf(atom_max, "%d", N_ATOM_MAX);
-			argv[0] = STEP_ALIMENTAZIONE;
-			argv[1] = atom_max;
-			argv[2] = N_NUOVI_ATOMI;
-			argv[3] = NULL;
+			argv[0] = "alimentazione";
+			argv[1] = STEP_ALIMENTAZIONE;
+			argv[2] = atom_max;
+			argv[3] = N_NUOVI_ATOMI;
+			argv[4] = NULL;
 			execve("alimentazione", argv, NULL);
 			break;
 

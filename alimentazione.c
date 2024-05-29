@@ -23,9 +23,9 @@ int main(int argc, char* argv[]){
 	struct timespec timer;
 	key_t key;
 
-	STEP_ALIMENTAZIONE = atoi(argv[0]);
-	N_ATOM_MAX = atoi(argv[1]);
-	N_NUOVI_ATOMI = atoi(argv[2]);
+	STEP_ALIMENTAZIONE = atoi(argv[1]);
+	N_ATOM_MAX = atoi(argv[2]);
+	N_NUOVI_ATOMI = atoi(argv[3]);
 
 	key = ftok("master.c", 'x');
 	semid = semget(key, 1, 0600);
