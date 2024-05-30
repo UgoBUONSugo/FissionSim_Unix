@@ -1,7 +1,7 @@
 # Makefile for compiling master and subfiles
 
 CC = gcc
-CFLAGS = -Wall -Wvla -Wextra -Werror -std=gnu99
+CFLAGS = -Wall -Wvla -Wextra -Werror -Wpedantic -D_GNU_SOURCE
 TARGET = master
 
 all: master atomo attivatore alimentazione inibitore

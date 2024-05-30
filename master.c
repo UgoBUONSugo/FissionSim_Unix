@@ -1,5 +1,3 @@
-#define _POSIX_SOURCE
-#define _DEFAULT_SOURCE
 #include <time.h>
 #include <stdio.h>
 #include <errno.h>
@@ -44,7 +42,6 @@ int main(){
 	struct SimStats *shared_memory;
 	struct sigaction sa;
 	struct timespec timer;
-	int msgid;
 	int m_id;
 	int m_id2;
 	int semid;
@@ -92,7 +89,7 @@ int main(){
 	semctl(semid, 1, SETVAL, 1);								//Mutex sem to access shared memory
 	semctl(semid, 2, SETVAL, 1);								//Sem used for master-inhibitor comms
 
-  msgid = msgget(key, IPC_CREAT | 0600); (void)msgid;
+  msgget(key, IPC_CREAT | 0600);
 
   m_id = shmget(key, sizeof(*shared_memory), IPC_CREAT | 0600);
   shared_memory = (struct SimStats*) shmat(m_id, NULL, 0);
@@ -197,7 +194,8 @@ pid_t init_activator(char answ, int inhibitor_pid, char *STEP_ATTIVATORE){
 			break;
 
 		case 0:
-			char inhib_pid[20]; 
+		{
+			char inhib_pid[20];
 			char *argv[5];
 
 			sprintf(inhib_pid, "%d", inhibitor_pid);
@@ -208,6 +206,7 @@ pid_t init_activator(char answ, int inhibitor_pid, char *STEP_ATTIVATORE){
 			argv[4] = NULL;
 			execve("attivatore", argv, NULL);
 			break;
+		}
 
 		default:  
 			break;
@@ -226,6 +225,7 @@ void init_supply(char *STEP_ALIMENTAZIONE, int N_ATOM_MAX, char *N_NUOVI_ATOMI){
 			break;
 
 		case 0:
+		{
 			char atom_max[20];
 			char *argv[5];
 
@@ -237,6 +237,7 @@ void init_supply(char *STEP_ALIMENTAZIONE, int N_ATOM_MAX, char *N_NUOVI_ATOMI){
 			argv[4] = NULL;
 			execve("alimentazione", argv, NULL);
 			break;
+		}
 
 		default:  
 			return;
@@ -254,9 +255,11 @@ pid_t init_inhibitor(){
 			break;
 
 		case 0:
+		{
 			char *argv[] = {"inibitore", NULL};
 			execve("inibitore", argv, NULL);
 			break;
+		}
 
 		default:
 			break;
@@ -309,10 +312,10 @@ void inhib_switch(){
 void sim_term(){
 	int key;
 
-	signal(SIGUSR1, SIG_IGN);
+	toggle_signals(1, SIGUSR1);
 	kill(0, SIGUSR1);
 
-	key = ftok("/master.c", 'x');
+	key = ftok("master.c", 'x');
 	semctl(semget(key, 2, 0600), 0, IPC_RMID);
 	msgctl(msgget(key, 0600), IPC_RMID, NULL);
 	shmctl(shmget(key, sizeof(struct SimStats), IPC_CREAT | 0600), IPC_RMID, NULL);

@@ -72,14 +72,17 @@ int split_atom(int atomic_number, struct SimStats *shared_memory, int semid){
 		switch (kid_pid = fork())
 		{
 			case -1:
+			{
 				key_t key = ftok("master.c", 'y');
 				pid_t *master_pid;
 				int m_id = shmget(key, sizeof(*master_pid), 0600);
 				master_pid = (pid_t*) shmat(m_id, NULL, 0);
 				kill(*master_pid, SIGUSR2);
 				break;
+			}
 
 			case 0:
+			{
 				char atomic_number_str[10];
 				char *argv[4];
 
@@ -95,6 +98,7 @@ int split_atom(int atomic_number, struct SimStats *shared_memory, int semid){
 				argv[3] = NULL;
 				execve("atomo", argv, NULL); 
 				break;
+			}
 
 			default:  
 				close(file_pipes[0]);  
