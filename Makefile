@@ -1,28 +1,25 @@
-# Makefile for compiling master and subfiles
-
 CC = gcc
 CFLAGS = -Wall -Wvla -Wextra -Werror -Wpedantic -D_GNU_SOURCE
-TARGET = master
 
 all: master atomo attivatore alimentazione inibitore
 
-master: master.c external.c
-	$(CC) $(CFLAGS) -o master master.c external.c
+master: master.c src/sem_sig_lib.c src/atoms_action_lib.c
+	$(CC) $(CFLAGS) -o master master.c src/sem_sig_lib.c src/atoms_action_lib.c
 
-atomo: atomo.c external.c
-	$(CC) $(CFLAGS) -o atomo atomo.c external.c
+atomo: src/atomo.c src/sem_sig_lib.c src/atoms_action_lib.c
+	$(CC) $(CFLAGS) -o atomo src/atomo.c src/sem_sig_lib.c src/atoms_action_lib.c
 
-attivatore: attivatore.c external.c
-	$(CC) $(CFLAGS) -o attivatore attivatore.c external.c
+attivatore: src/attivatore.c src/sem_sig_lib.c
+	$(CC) $(CFLAGS) -o attivatore src/attivatore.c src/sem_sig_lib.c src/atoms_action_lib.c
 
-alimentazione: alimentazione.c external.c
-	$(CC) $(CFLAGS) -o alimentazione alimentazione.c external.c
+alimentazione: src/alimentazione.c src/sem_sig_lib.c src/atoms_action_lib.c
+	$(CC) $(CFLAGS) -o alimentazione src/alimentazione.c src/sem_sig_lib.c src/atoms_action_lib.c
 
-inibitore: inibitore.c external.c
-	$(CC) $(CFLAGS) -o inibitore inibitore.c external.c
+inibitore: src/inibitore.c src/sem_sig_lib.c
+	$(CC) $(CFLAGS) -o inibitore src/inibitore.c src/sem_sig_lib.c src/atoms_action_lib.c
 
 clean:
-	rm -f master atomo attivatore alimentazione
+	rm -f master atomo attivatore alimentazione inibitore
 
-run: $(TARGET)
-	./$(TARGET)
+run: master
+	./master

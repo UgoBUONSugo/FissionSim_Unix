@@ -13,8 +13,10 @@
 #include <sys/ipc.h>
 #include <sys/msg.h>
 #include <sys/types.h>
-#include "external.h"
-
+#include "include/external.h"
+#include "include/sem_sig_lib.h"
+#include "include/atoms_action_lib.h"
+//TODO: Controlla di non aver fottuto qualcosa con la nuova org
 #define BLACKOUT -1
 #define EXPLODE -2
 
@@ -45,6 +47,7 @@ int main(){
 	int m_id;
 	int m_id2;
 	int semid;
+	int msgid;
 	char answ;
 	float ratio;
 	long rem_energy = 10000;
@@ -76,10 +79,13 @@ int main(){
 	sa.sa_handler = inhib_switch;
 	sigaction(SIGIO, &sa, NULL);
 
-  memset(&sa, 0, sizeof(sa));
 	sa.sa_handler = sim_print;
 	sigaction(SIGUSR2, &sa, NULL);
 	sigaction(SIGALRM, &sa, NULL);
+
+	sa.sa_handler = SIG_DFL;
+	sa.sa_flags = SA_NOCLDWAIT;
+	sigaction(SIGCHLD, &sa, NULL);
   
 	memset(&overall_stats, 0, sizeof(overall_stats));
 
@@ -89,7 +95,7 @@ int main(){
 	semctl(semid, 1, SETVAL, 1);								//Mutex sem to access shared memory
 	semctl(semid, 2, SETVAL, 1);								//Sem used for master-inhibitor comms
 
-  msgget(key, IPC_CREAT | 0600);
+  msgid = msgget(key, IPC_CREAT | 0600);
 
   m_id = shmget(key, sizeof(*shared_memory), IPC_CREAT | 0600);
   shared_memory = (struct SimStats*) shmat(m_id, NULL, 0);
@@ -99,6 +105,11 @@ int main(){
   master_pid = (pid_t*) shmat(m_id2, NULL, 0);
   memset(master_pid, 0, sizeof(*master_pid));
   *master_pid = getpid();
+
+  if(semid < 0 || m_id < 0 || m_id2 < 0 || msgid < 0)
+  {
+  	exit(EXIT_FAILURE);
+  }
 
 	inhibitor_pid = init_inhibitor();
 	init_atom(N_ATOMI_INIT, N_ATOM_MAX, "1");
