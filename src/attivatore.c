@@ -16,6 +16,7 @@
 #include "../include/sem_sig_lib.h"
 
 #define TOT_NSEC 0
+#define DELAY 500000000
 #define N_ACTIVATIONS 5
 
 void inhib_switch(int signum);
@@ -44,8 +45,8 @@ int main(int argc, char* argv[]){
 	semid = semget(key, 1, 0600);
 	msgid = msgget(key, 0600);
 
-	timer.tv_sec = STEP_ATTIVATORE;
-	timer.tv_nsec = TOT_NSEC;
+	timer.tv_sec = 0;
+	timer.tv_nsec = DELAY;
 
 	m_id = shmget(key, sizeof(*shared_memory), 0600);
 	shared_memory = (struct SimStats*) shmat(m_id, NULL, 0);
@@ -54,10 +55,15 @@ int main(int argc, char* argv[]){
 	sa.sa_handler = &inhib_switch;
 	sigaction(SIGIO, &sa, NULL);
 
+	TEST_ERROR
 	P(semid, 0);
 	wait_for_zero(semid, 0);
-	
-	while(true)
+
+	nanosleep(&timer, NULL); //Delay aggiunto per evitare che lo scheduler influenzi troppo la print del processo master
+	timer.tv_sec = STEP_ATTIVATORE;
+	timer.tv_nsec = TOT_NSEC;
+
+	while(1)
 	{
 		toggle_signals(1, SIGIO);
 		for(int i = 0; i < N_ACTIVATIONS; i++)

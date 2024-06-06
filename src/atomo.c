@@ -37,13 +37,14 @@ int main(int argc, char* argv[]){
 	semid = semget(key, 1, 0600);
 	queid = msgget(key, 0600);
 
-	if(init) 			//Init=1 -> atom process created during exe of the program -> no need for synchronization
-	{     
+	if(init) 			//Init=1 -> atomo creato durante l'esecuzione del programma -> nessun bisogno di sincronizzarsi
+	{
+		TEST_ERROR
 		P(semid, 0); 
 		wait_for_zero(semid, 0);		
 	}
 
-	while(true)
+	while(1)
 	{
 		msgrcv(queid, NULL, 0, 1, 0);
 		atomic_number = split_atom(atomic_number, shared_memory, semid);

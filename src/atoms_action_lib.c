@@ -1,12 +1,15 @@
+#include <stdio.h>
+#include <errno.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <sys/sem.h>
-#include <sys/types.h>
-#include <sys/ipc.h>
-#include <sys/shm.h>
 #include <signal.h>
 #include <string.h>
-#include <stdio.h>
+#include <sys/sem.h>
+#include <sys/ipc.h>
+#include <sys/shm.h>
+#include <sys/ipc.h>
+#include <sys/msg.h>
+#include <sys/types.h>
 #include "../include/external.h"
 #include "../include/sem_sig_lib.h"
 
@@ -16,10 +19,11 @@ void init_atom(int n, int N_ATOM_MAX, char *init){
 	int file_pipes[2];
 
 	if (pipe(file_pipes) == 0)
-	{ 
+	{
 		for(int i = 0; i < n; i++)
 		{
-			switch (kid_pid = fork()){
+			switch (kid_pid = fork())
+			{
 				case -1:
 				{
 					key_t key = ftok("master.c", 'y');
@@ -51,6 +55,7 @@ void init_atom(int n, int N_ATOM_MAX, char *init){
 		close(file_pipes[0]);  
 		close(file_pipes[1]); 
 	}
+	TEST_ERROR
 }
 
 int split_atom(int atomic_number, struct SimStats *shared_memory, int semid){
@@ -118,6 +123,12 @@ int split_atom(int atomic_number, struct SimStats *shared_memory, int semid){
 				break;
 		}
 		close(file_pipes[1]); 
+	}
+	else
+	{
+		struct msgbuf buf;
+		buf.mtype = 1;
+		msgsnd(msgget(ftok("master.c", 'x'), 0600), &buf, 0, 0);
 	}
 
 	return atomic_number;

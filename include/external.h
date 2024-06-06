@@ -1,6 +1,15 @@
 #define MAX(x, y) (((x) > (y)) ? (x) : (y))
 
-#define SIM_PRINT \
+//Macro presa dalla cartella 09_memoria_condivisa sulla pagina moodle del corso
+#define TEST_ERROR    if (errno) {dprintf(STDERR_FILENO,		\
+					  "%s:%d: PID=%5d: Error %d (%s)\n", \
+					  __FILE__,			\
+					  __LINE__,			\
+					  getpid(),			\
+					  errno,			\
+					  strerror(errno));}
+
+#define BAR_PRINT \
 printf("|[\033[0;34m//\033[0;37m"); \
 			for(int i = 0; i < (ratio * 20) && i < 5; i++){ \
 				printf("\033[0;36m/"); \

@@ -42,12 +42,13 @@ int main(){
 	sa.sa_handler = &sim_print;
 	sigaction (SIGUSR2, &sa, NULL);
 
+	TEST_ERROR
 	srand(getpid());
 
 	P(semid, 0);
 	wait_for_zero(semid, 0);
 
-	while(true)
+	while(1)
 	{
 		while(msgrcv(msgid, NULL, 0, self_pid, 0) && errno == EINTR){}
 
@@ -63,13 +64,13 @@ int main(){
 }
 
 void sim_print(){
-	//Mutex sem, critical section begins
+	//Sem mutex, inizio sezione critica
 	P(semid, 1);
 
 	shared_memory->absorbed_energy += (float)(shared_memory->liberated_energy)*0.5;
 	shared_memory->liberated_energy -= (float)(shared_memory->liberated_energy)*0.5;
 	shared_memory->activation_interrupted = counter; 
 
-	P(semid, 2); //Sem to communicate to the master process that the shared memory has been updated
+	P(semid, 2); //Sem per comunicare al processo master che la memoria condivisa è stata aggiornata
 	counter=0;
 }

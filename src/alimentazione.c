@@ -41,6 +41,7 @@ int main(int argc, char* argv[]){
 	sa.sa_flags = SA_NOCLDWAIT;
 	sigaction(SIGCHLD, &sa, NULL);
 
+	TEST_ERROR
 	P(semid, 0);
 	wait_for_zero(semid, 0);
 

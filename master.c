@@ -16,7 +16,7 @@
 #include "include/external.h"
 #include "include/sem_sig_lib.h"
 #include "include/atoms_action_lib.h"
-//TODO: Controlla di non aver fottuto qualcosa con la nuova org
+
 #define BLACKOUT -1
 #define EXPLODE -2
 
@@ -57,7 +57,7 @@ int main(){
 
 	atexit(&sim_term);
 
-	//Setting parameters values as enviorment variables
+	//Inizializzazione dei parametri come variabili d'ambiente
 	setenv("ENERGY_DEM", "600", 0);
 	ENERGY_DEM = atoi(getenv("ENERGY_DEM"));
 	setenv("N_ATOM_MAX", "100", 0);
@@ -91,9 +91,9 @@ int main(){
 
 	key = ftok("master.c", 'x');
 	semid = semget(key, 3, IPC_CREAT | 0600);
-	semctl(semid, 0, SETVAL, N_ATOMI_INIT + 4); //Initial sync sem
-	semctl(semid, 1, SETVAL, 1);								//Mutex sem to access shared memory
-	semctl(semid, 2, SETVAL, 1);								//Sem used for master-inhibitor comms
+	semctl(semid, 0, SETVAL, N_ATOMI_INIT + 4); //Sem di sync iniziale
+	semctl(semid, 1, SETVAL, 1);								//Sem mutex per memoria condivisa
+	semctl(semid, 2, SETVAL, 1);								//Sem usato per communicazioni tra master-inib
 
   msgid = msgget(key, IPC_CREAT | 0600);
 
@@ -146,7 +146,7 @@ int main(){
 		}
 		else P(semid, 1);
 
-		//Critic section begins
+		//Inizio sezione critica
 		overall_stats.activation_count += shared_memory->activation_count;
 		overall_stats.split_count += shared_memory->split_count;
 		overall_stats.activation_interrupted += shared_memory->activation_interrupted;
@@ -172,17 +172,17 @@ int main(){
 
 		if((rem_energy -= ENERGY_DEM) < 0)
 		{
-			SIM_PRINT;
+			BAR_PRINT;
 			sim_print(BLACKOUT);
 		}
 
 		bzero(shared_memory, sizeof(struct SimStats));
 		shared_memory->consumed_energy = ENERGY_DEM;
-		//Critic section end
+		//Fine sezione critica
 
 		V(semid, 1);
 
-		SIM_PRINT;
+		BAR_PRINT;
 		if(rem_energy > ENERGY_EXPLODE_THRESHOLD) sim_print(EXPLODE);
 
 		toggle_signals(0, SIGIO); 
