@@ -55,7 +55,11 @@ void init_atom(int n, int N_ATOM_MAX, char *init){
 		close(file_pipes[0]);  
 		close(file_pipes[1]); 
 	}
-	TEST_ERROR
+	else
+	{
+		TEST_ERROR	
+	}
+	
 }
 
 int split_atom(int atomic_number, struct SimStats *shared_memory, int semid){
