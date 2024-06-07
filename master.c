@@ -91,26 +91,27 @@ int main(){
 	memset(&overall_stats, 0, sizeof(overall_stats));
 
 	key = ftok("master.c", 'x');
-	semid = semget(key, 3, IPC_CREAT | 0600);
+	semid = semget(key, 3, IPC_CREAT | IPC_EXCL | 0600);
+	msgid = msgget(key, IPC_CREAT | IPC_EXCL | 0600);
+	m_id = shmget(key, sizeof(*shared_memory), IPC_CREAT | IPC_EXCL | 0600);
+	m_id2 = shmget(ftok("master.c", 'y'), sizeof(*master_pid), IPC_CREAT | IPC_EXCL | 0600);
+
+	if(semid < 0 || m_id < 0 || m_id2 < 0 || msgid < 0)
+  {
+  	printf("Errore nell'inizializzazione delle strutture IPC\n");
+  	exit(EXIT_FAILURE);
+  }
+
 	semctl(semid, 0, SETVAL, N_ATOMI_INIT + 4); //Sem di sync iniziale
 	semctl(semid, 1, SETVAL, 1);								//Sem mutex per memoria condivisa
 	semctl(semid, 2, SETVAL, 1);								//Sem usato per communicazioni tra master-inib
-
-  msgid = msgget(key, IPC_CREAT | 0600);
-
-  m_id = shmget(key, sizeof(*shared_memory), IPC_CREAT | 0600);
+  
   shared_memory = (struct SimStats*) shmat(m_id, NULL, 0);
   memset(shared_memory, 0, sizeof(*shared_memory));
-
-  m_id2 = shmget(ftok("master.c", 'y'), sizeof(*master_pid), IPC_CREAT | 0600);
+ 
   master_pid = (pid_t*) shmat(m_id2, NULL, 0);
   memset(master_pid, 0, sizeof(*master_pid));
   *master_pid = getpid();
-
-  if(semid < 0 || m_id < 0 || m_id2 < 0 || msgid < 0)
-  {
-  	exit(EXIT_FAILURE);
-  }
 
 	inhibitor_pid = init_inhibitor();
 	init_atom(N_ATOMI_INIT, N_ATOM_MAX, "1");
