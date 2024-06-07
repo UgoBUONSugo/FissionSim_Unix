@@ -310,9 +310,7 @@ void sim_print(int signum){
 			break;
 	}
 
-	char c;
-	while ((c = getchar()) != EOF) { }
-
+	while (getchar() != EOF);
 	exit(EXIT_SUCCESS);
 }
 
