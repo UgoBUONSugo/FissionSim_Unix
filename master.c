@@ -82,6 +82,7 @@ int main(){
 	sa.sa_handler = sim_print;
 	sigaction(SIGUSR2, &sa, NULL);
 	sigaction(SIGALRM, &sa, NULL);
+	sigaction(SIGINT, &sa, NULL);
 
 	sa.sa_handler = SIG_DFL;
 	sa.sa_flags = SA_NOCLDWAIT;
@@ -290,6 +291,10 @@ void sim_print(int signum){
 
 		case SIGUSR2:
 			printf("Meltdown\n");
+			break;
+
+		case SIGINT:
+			printf("Interruzione utente\n");
 			break;
 
 		case -1:
